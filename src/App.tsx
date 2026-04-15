@@ -20,7 +20,6 @@ import { PropertyShow } from "./pages/properties/PropertyShow";
 import { ApplicationCreate } from "./pages/applications/ApplicationCreate";
 import { Dashboard } from "./pages/dashboard/Dashboard";
 
-
 function App() {
     return (
         <BrowserRouter>
@@ -40,8 +39,10 @@ function App() {
                         >
                             <Routes>
                                 <Route path="/login" element={<Login />} />
-                                <Route path="/properties" element={<PropertyList />} />
-                                <Route path="/properties/:id" element={<PropertyShow />} />
+
+                                {/* Everything inside this Route element will now have
+                                    the Nav Bar from AuthenticatedLayout
+                                */}
                                 <Route
                                     element={
                                         <AuthenticatedLayout>
@@ -49,9 +50,12 @@ function App() {
                                         </AuthenticatedLayout>
                                     }
                                 >
+                                    <Route path="/properties" element={<PropertyList />} />
+                                    <Route path="/properties/:id" element={<PropertyShow />} />
                                     <Route path="/dashboard" element={<Dashboard />} />
                                     <Route path="/applications/new" element={<ApplicationCreate />} />
                                 </Route>
+
                                 <Route path="/" element={<Navigate to="/properties" />} />
                                 <Route path="*" element={<Navigate to="/properties" />} />
                             </Routes>

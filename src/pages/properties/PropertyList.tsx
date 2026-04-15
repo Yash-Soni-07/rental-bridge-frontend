@@ -1,8 +1,7 @@
-import { useList } from "@refinedev/core";
+import { useList, useGo } from "@refinedev/core";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useNavigate } from "react-router-dom";
 
 interface Property {
     id: number;
@@ -16,7 +15,9 @@ interface Property {
 }
 
 export const PropertyList = () => {
-    const navigate = useNavigate();
+    // useGo is the most reliable way to handle path-based navigation in Refine
+    // It ensures the router state and the UI state stay synchronized.
+    const go = useGo();
 
     const { result, query } = useList<Property>({
         resource: "properties",
@@ -75,7 +76,7 @@ export const PropertyList = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {properties.map((property) => (
-                    <Card key={property.id} className="flex flex-col">
+                    <Card key={property.id} className="flex flex-col hover:shadow-md transition-shadow">
                         <CardHeader>
                             <CardTitle className="line-clamp-1">
                                 {property.title}
@@ -87,7 +88,7 @@ export const PropertyList = () => {
                         </CardHeader>
 
                         <CardContent className="flex-1">
-                            <p className="text-muted-foreground line-clamp-2 mb-2">
+                            <p className="text-muted-foreground line-clamp-2 mb-2 text-sm">
                                 {property.description || "No description available"}
                             </p>
 
@@ -95,17 +96,22 @@ export const PropertyList = () => {
                                 {property.address}
                             </div>
 
-                            <div className="flex gap-4 mt-2 text-sm">
-                                <span>{property.bedrooms} beds</span>
-                                <span>{property.bathrooms} baths</span>
-                                <span>{property.area_sqft} sqft</span>
+                            <div className="flex gap-4 mt-3 text-xs font-medium text-muted-foreground">
+                                <span className="bg-secondary px-2 py-1 rounded">{property.bedrooms} BHK</span>
+                                <span className="bg-secondary px-2 py-1 rounded">{property.bathrooms} Baths</span>
+                                <span className="bg-secondary px-2 py-1 rounded">{property.area_sqft} Sq.ft</span>
                             </div>
                         </CardContent>
 
                         <CardFooter>
                             <Button
                                 className="w-full"
-                                onClick={() => navigate(`/properties/${property.id}`)}
+                                onClick={() => {
+                                    go({
+                                        to: `/properties/${property.id}`,
+                                        type: "push",
+                                    });
+                                }}
                             >
                                 View Details
                             </Button>

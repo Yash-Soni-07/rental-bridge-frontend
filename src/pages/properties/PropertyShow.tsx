@@ -1,5 +1,5 @@
-import { useOne, useGetIdentity, usePermissions } from "@refinedev/core";
-import { useParams, useNavigate } from "react-router";
+import { useOne, useGetIdentity, usePermissions, useGo } from "@refinedev/core"; // Refined: replaced navigate with useGo
+import { useParams } from "react-router"; // Refined: removed useNavigate
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -27,16 +27,22 @@ interface Property {
 
 export const PropertyShow = () => {
     const { id } = useParams<{ id: string }>();
-    const navigate = useNavigate();
+
+    // Refined Navigation: Use useGo to ensure synchronized redirects
+    const go = useGo();
+
     const { data: user } = useGetIdentity();
-    const { data: permissions } = usePermissions({});
+
+    // Refined Logic: Permissions returns an object, we need to extract data (the role string)
+    const { data: role } = usePermissions<string>({});
+
     if (!id) {
         return (
             <div className="container mx-auto p-6 max-w-4xl">
                 <Alert variant="destructive">
                     <AlertDescription>Invalid property ID</AlertDescription>
                 </Alert>
-                <Button variant="outline" className="mt-4" onClick={() => navigate("/properties")}>
+                <Button variant="outline" className="mt-4" onClick={() => go({ to: "/properties", type: "push" })}>
                     Back to Properties
                 </Button>
             </div>
@@ -49,15 +55,19 @@ export const PropertyShow = () => {
     });
 
     const { isLoading, isError, error } = query;
-
     const property = result;
 
-    // const property = data?.data;
-    const isTenant = user && permissions === "tenant";
+    // Refined Check: Compare against the extracted role string
+    const isTenant = user && role === "tenant";
 
     const handleApplyNow = () => {
         if (property) {
-            navigate(`/applications/new?propertyId=${property.id}`);
+            // Refined Go Logic: Handle both the path and query parameters purely through useGo
+            go({
+                to: `/applications/new`,
+                query: { propertyId: property.id },
+                type: "push"
+            });
         }
     };
 
@@ -86,7 +96,7 @@ export const PropertyShow = () => {
                         {error?.message || "Property not found"}
                     </AlertDescription>
                 </Alert>
-                <Button variant="outline" className="mt-4" onClick={() => navigate("/properties")}>
+                <Button variant="outline" className="mt-4" onClick={() => go({ to: "/properties", type: "push" })}>
                     Back to Properties
                 </Button>
             </div>
@@ -97,7 +107,8 @@ export const PropertyShow = () => {
 
     return (
         <div className="container mx-auto p-6 max-w-4xl">
-            <Button variant="ghost" className="mb-4" onClick={() => navigate("/properties")}>
+            {/* Refined: Back button now uses go */}
+            <Button variant="ghost" className="mb-4" onClick={() => go({ to: "/properties", type: "push" })}>
                 ← Back to Properties
             </Button>
 
@@ -105,9 +116,9 @@ export const PropertyShow = () => {
                 <CardHeader>
                     <CardTitle className="text-3xl">{property.title}</CardTitle>
                     <div className="flex flex-wrap gap-2 mt-2">
-            <span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
-              {property.property_type}
-            </span>
+                        <span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
+                            {property.property_type}
+                        </span>
                         <span className="text-2xl font-bold text-primary">₹{property.monthly_rent}/month</span>
                     </div>
                 </CardHeader>
@@ -158,7 +169,8 @@ export const PropertyShow = () => {
                         <Alert>
                             <AlertDescription>
                                 Please{" "}
-                                <Button variant="link" className="p-0 h-auto" onClick={() => navigate("/login")}>
+                                {/* Refined: Login link now uses go */}
+                                <Button variant="link" className="p-0 h-auto" onClick={() => go({ to: "/login", type: "push" })}>
                                     login
                                 </Button>{" "}
                                 as a tenant to apply for this property.
@@ -169,7 +181,7 @@ export const PropertyShow = () => {
                     {user && !isTenant && (
                         <Alert>
                             <AlertDescription>
-                                Only tenants can apply for properties. Your role is {permissions || "unknown"}.
+                                Only tenants can apply for properties. Your role is {role || "unknown"}.
                             </AlertDescription>
                         </Alert>
                     )}

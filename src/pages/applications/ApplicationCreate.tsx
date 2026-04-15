@@ -1,5 +1,5 @@
-import { useCreate, useOne, useGetIdentity } from "@refinedev/core";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useCreate, useOne, useGetIdentity, useGo } from "@refinedev/core"; // Refined: replaced navigate with useGo
+import { useSearchParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -27,16 +27,24 @@ interface Property {
 export const ApplicationCreate = () => {
     const [searchParams] = useSearchParams();
     const propertyId = searchParams.get("propertyId");
-    const navigate = useNavigate();
-    const { data: user } = useGetIdentity();
-    const { mutate: createApplication, mutation } = useCreate();
-    // ADD THIS ABOVE (after useCreate)
 
-    const isLoading = mutation?.status === "pending";    // Fetch property details for display
+    // Refined Navigation: Use useGo for synchronized redirection
+    const go = useGo();
+
+    const { data: user } = useGetIdentity();
+
+    // Correct way to get loading state in your version of Refine
+    // Refined: Access isPending from the mutation object (TanStack Query v5 pattern)
+    const { mutate: createApplication, mutation } = useCreate();
+    const isSubmitting = mutation.status === "pending";
+
+    // Fetch property details for display
     const { result: property, query } = useOne<Property>({
         resource: "properties",
         id: propertyId!,
-        queryOptions: { enabled: !!propertyId },
+        queryOptions: {
+            enabled: !!propertyId
+        },
     });
 
     const propertyLoading = query?.isLoading;
@@ -54,7 +62,7 @@ export const ApplicationCreate = () => {
                 <Alert variant="destructive">
                     <AlertDescription>No property selected. Please go back and try again.</AlertDescription>
                 </Alert>
-                <Button className="mt-4" onClick={() => navigate("/properties")}>
+                <Button className="mt-4" onClick={() => go({ to: "/properties", type: "push" })}>
                     Browse Properties
                 </Button>
             </div>
@@ -75,7 +83,8 @@ export const ApplicationCreate = () => {
             },
             {
                 onSuccess: () => {
-                    navigate("/dashboard");
+                    // Refined: Instant redirect to dashboard
+                    go({ to: "/dashboard", type: "push" });
                 },
                 onError: (error) => {
                     console.error("Application submission error:", error);
@@ -106,7 +115,7 @@ export const ApplicationCreate = () => {
                 <Alert variant="destructive">
                     <AlertDescription>Property not found.</AlertDescription>
                 </Alert>
-                <Button className="mt-4" onClick={() => navigate("/properties")}>
+                <Button className="mt-4" onClick={() => go({ to: "/properties", type: "push" })}>
                     Back to Properties
                 </Button>
             </div>
@@ -115,7 +124,11 @@ export const ApplicationCreate = () => {
 
     return (
         <div className="container mx-auto p-6 max-w-2xl">
-            <Button variant="ghost" className="mb-4" onClick={() => navigate(`/properties/${propertyId}`)}>
+            <Button
+                variant="ghost"
+                className="mb-4"
+                onClick={() => go({ to: `/properties/${propertyId}`, type: "push" })}
+            >
                 ← Back to Property
             </Button>
 
@@ -181,10 +194,14 @@ export const ApplicationCreate = () => {
                         </div>
 
                         <div className="flex gap-4 pt-4">
-                            <Button type="submit" disabled={isLoading}>
-                                {isLoading ? "Submitting..." : "Submit Application"}
+                            <Button type="submit" disabled={isSubmitting}>
+                                {isSubmitting ? "Submitting..." : "Submit Application"}
                             </Button>
-                            <Button type="button" variant="outline" onClick={() => navigate("/properties")}>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => go({ to: "/properties", type: "push" })}
+                            >
                                 Cancel
                             </Button>
                         </div>
