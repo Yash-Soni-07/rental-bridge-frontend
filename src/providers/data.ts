@@ -1,6 +1,6 @@
 import { DataProvider, BaseKey } from "@refinedev/core";
 
-const API_URL = "http://localhost:3000/api";
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
 
 // Helper to get auth headers
 const getHeaders = (): HeadersInit => {
