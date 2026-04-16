@@ -2,6 +2,8 @@ import { useList, useGo } from "@refinedev/core";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+// Step 3.1: Import the new component
+import { PropertyImage } from "@/components/PropertyImage";
 
 interface Property {
     id: number;
@@ -15,8 +17,6 @@ interface Property {
 }
 
 export const PropertyList = () => {
-    // useGo is the most reliable way to handle path-based navigation in Refine
-    // It ensures the router state and the UI state stay synchronized.
     const go = useGo();
 
     const { result, query } = useList<Property>({
@@ -33,11 +33,12 @@ export const PropertyList = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {[...Array(6)].map((_, i) => (
                         <Card key={i}>
+                            <Skeleton className="h-48 w-full rounded-t-xl" />
                             <CardHeader>
                                 <Skeleton className="h-6 w-3/4" />
                             </CardHeader>
                             <CardContent>
-                                <Skeleton className="h-4 w-full mb-2" />
+                                <Skeleton className="h-4 shadow-sm w-full mb-2" />
                                 <Skeleton className="h-4 w-2/3" />
                             </CardContent>
                             <CardFooter>
@@ -76,9 +77,13 @@ export const PropertyList = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {properties.map((property) => (
-                    <Card key={property.id} className="flex flex-col hover:shadow-md transition-shadow">
+                    <Card key={property.id} className="flex flex-col hover:shadow-lg transition-all duration-200 overflow-hidden border-none shadow-sm">
+
+                        {/* Step 3.2: Insert the Image component here */}
+                        <PropertyImage propertyId={property.id} />
+
                         <CardHeader>
-                            <CardTitle className="line-clamp-1">
+                            <CardTitle className="line-clamp-1 text-xl">
                                 {property.title}
                             </CardTitle>
 
