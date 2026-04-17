@@ -13,14 +13,30 @@ const getHeaders = (): HeadersInit => {
 
 // Generic request helper
 const fetchJson = async <T = any>(url: string, options: RequestInit = {}): Promise<T> => {
+    const token = localStorage.getItem("auth_token");
+    
+    // Prevent unauthenticated network requests to known private endpoints
+    // This stops the browser from logging 401 network errors during logout transitions
+    const isPublicRoute = 
+        (url.includes("/properties") && (!options.method || options.method === "GET")) || 
+        url.includes("/auth/");
+        
+    if (!token && !isPublicRoute) {
+        const error = new Error("Unauthorized: No token provided");
+        (error as any).status = 401;
+        throw error;
+    }
+
     const response = await fetch(url, {
         ...options,
         headers: { ...getHeaders(), ...options.headers },
     });
 
     if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: response.statusText }));
-        throw new Error(error.error || `Request failed with status ${response.status}`);
+        const errorData = await response.json().catch(() => ({ error: response.statusText }));
+        const error = new Error(errorData.error || `Request failed with status ${response.status}`);
+        (error as any).status = response.status;
+        throw error;
     }
 
     return response.json();

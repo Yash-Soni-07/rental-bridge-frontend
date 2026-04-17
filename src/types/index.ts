@@ -2,8 +2,13 @@
 export interface User {
     id: number;
     email: string;
-    name: string;
+    name: string;         // Refine identity display name (mapped from full_name in authProvider)
+    full_name: string;    // Backend field: users.full_name
+    username: string;     // Backend field: users.username
     role: "admin" | "landlord" | "tenant";
+    is_active?: boolean;
+    is_verified?: boolean;
+    profile_image?: string | null;
 }
 
 export interface Property {
