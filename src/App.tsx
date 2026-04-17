@@ -35,6 +35,7 @@ function App() {
                                 syncWithLocation: true,
                                 warnWhenUnsavedChanges: true,
                                 projectId: "eWoIiM-xINDLu-iDFkQy",
+                                title: { text: "Rental Bridge" },
                             }}
                         >
                             <Routes>
@@ -62,7 +63,65 @@ function App() {
                             <Toaster />
                             <RefineKbar />
                             <UnsavedChangesNotifier />
-                            <DocumentTitleHandler />
+
+                            {/* 2. THE DYNAMIC FIX FOR TITLE */}
+                            <DocumentTitleHandler
+                                handler={({ action, resource, pathname }) => {
+                                    const baseTitle = "Rental Bridge - Connecting Landlords and Tenants";
+
+                                    // 1. Explicit static routes
+                                    if (pathname === "/" || pathname === "/dashboard") {
+                                        return `Dashboard | ${baseTitle}`;
+                                    }
+                                    if (pathname === "/login") {
+                                        return `Login | ${baseTitle}`;
+                                    }
+
+                                    // 2. If Refine successfully matches a specific Resource (Properties, etc.)
+                                    if (resource) {
+                                        const resourceName = resource.meta?.label || resource.name || "";
+                                        const formattedResource = resourceName
+                                            ? resourceName.charAt(0).toUpperCase() + resourceName.slice(1)
+                                            : "";
+
+                                        if (formattedResource) {
+                                            switch (action) {
+                                                case "list":
+                                                    return `All ${formattedResource} | ${baseTitle}`;
+                                                case "show":
+                                                    return `${formattedResource} Details | ${baseTitle}`;
+                                                case "create":
+                                                    return `Add New ${formattedResource} | ${baseTitle}`;
+                                                case "edit":
+                                                    return `Edit ${formattedResource} | ${baseTitle}`;
+                                                default:
+                                                    return `${formattedResource} | ${baseTitle}`;
+                                            }
+                                        }
+                                    }
+
+                                    // 3. THE ULTIMATE FALLBACK: For /applications or any custom page
+                                    // If resource is missing, extract the word directly from the URL.
+                                    if (pathname && pathname !== "/") {
+                                        // This splits "/applications/new" and grabs "applications"
+                                        const pathParts = pathname.split('/').filter(Boolean);
+                                        if (pathParts.length > 0) {
+                                            const rawName = pathParts[0];
+                                            const formattedName = rawName.charAt(0).toUpperCase() + rawName.slice(1);
+
+                                            // If there is a second part (like an ID or 'new'), add context
+                                            if (pathParts.length > 1 && pathParts[1] === "new") {
+                                                return `Add New ${formattedName} | ${baseTitle}`;
+                                            }
+
+                                            return `${formattedName} | ${baseTitle}`;
+                                        }
+                                    }
+
+                                    // 4. Default failsafe
+                                    return baseTitle;
+                                }}
+                            />
                         </Refine>
                         <DevtoolsPanel />
                     </DevtoolsProvider>
