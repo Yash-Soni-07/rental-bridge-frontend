@@ -1,5 +1,5 @@
 import { useCreate, useOne, useGetIdentity, useGo } from "@refinedev/core"; // Refined: replaced navigate with useGo
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router";
 import { useForm } from "react-hook-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";

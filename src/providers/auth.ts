@@ -1,9 +1,55 @@
-// src/providers/auth.ts
 import { AuthProvider } from "@refinedev/core";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
 
 export const authProvider: AuthProvider = {
+    // 1. REGISTRATION LOGIC
+    // Inside src/providers/auth.ts -> register method
+
+    register: async ({ name, username, email, password, role }) => {
+        try {
+            const response = await fetch(`${API_URL}/auth/register`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    email,
+                    username,
+                    full_name: name, // Maps frontend 'name' to backend 'full_name'
+                    password,
+                    role
+                }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                return {
+                    success: false,
+                    error: {
+                        name: "RegisterError",
+                        message: data.error || "Registration failed.",
+                    },
+                };
+            }
+
+            localStorage.setItem("auth_token", data.token);
+            localStorage.setItem("user", JSON.stringify(data.user));
+
+            return {
+                success: true,
+                redirectTo: "/dashboard",
+            };
+        } catch (error) {
+            return {
+                success: false,
+                error: {
+                    name: "NetworkError",
+                    message: "Network error during registration.",
+                },
+            };
+        }
+    },
+
     login: async ({ email, password }) => {
         try {
             const response = await fetch(`${API_URL}/auth/login`, {
@@ -24,7 +70,6 @@ export const authProvider: AuthProvider = {
                 };
             }
 
-            // Assuming backend returns { token, user: { id, role, name, email } }
             localStorage.setItem("auth_token", data.token);
             localStorage.setItem("user", JSON.stringify(data.user));
 

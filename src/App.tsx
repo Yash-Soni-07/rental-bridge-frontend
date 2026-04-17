@@ -14,15 +14,18 @@ import { ThemeProvider } from "./components/refine-ui/theme/theme-provider";
 import { dataProvider } from "./providers/data";
 import { authProvider } from "./providers/auth";
 import { Login } from "./pages/auth/Login";
+import { Register } from "./pages/auth/Register"; // <-- Added Register Import
 import { AuthenticatedLayout } from "./pages/layout/AuthenticatedLayout";
 import { PropertyList } from "./pages/properties/PropertyList";
 import { PropertyShow } from "./pages/properties/PropertyShow";
+import { PropertyCreate } from "./pages/properties/PropertyCreate";
 import { ApplicationCreate } from "./pages/applications/ApplicationCreate";
 import { Dashboard } from "./pages/dashboard/Dashboard";
 
 function App() {
     return (
-        <BrowserRouter>
+        // @ts-expect-error - React Router v6 types don't officially support 'future' prop on BrowserRouter, but it is required at runtime to silence v7 console warnings.
+        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
             <RefineKbarProvider>
                 <ThemeProvider>
                     <DevtoolsProvider>
@@ -40,6 +43,7 @@ function App() {
                         >
                             <Routes>
                                 <Route path="/login" element={<Login />} />
+                                <Route path="/register" element={<Register />} /> {/* <-- Added Register Route */}
 
                                 {/* Everything inside this Route element will now have
                                     the Nav Bar from AuthenticatedLayout
@@ -52,6 +56,7 @@ function App() {
                                     }
                                 >
                                     <Route path="/properties" element={<PropertyList />} />
+                                    <Route path="/properties/new" element={<PropertyCreate />} />
                                     <Route path="/properties/:id" element={<PropertyShow />} />
                                     <Route path="/dashboard" element={<Dashboard />} />
                                     <Route path="/applications/new" element={<ApplicationCreate />} />
@@ -75,6 +80,9 @@ function App() {
                                     }
                                     if (pathname === "/login") {
                                         return `Login | ${baseTitle}`;
+                                    }
+                                    if (pathname === "/register") { // <-- Safely added explicit fallback
+                                        return `Register | ${baseTitle}`;
                                     }
 
                                     // 2. If Refine successfully matches a specific Resource (Properties, etc.)
@@ -101,15 +109,12 @@ function App() {
                                     }
 
                                     // 3. THE ULTIMATE FALLBACK: For /applications or any custom page
-                                    // If resource is missing, extract the word directly from the URL.
                                     if (pathname && pathname !== "/") {
-                                        // This splits "/applications/new" and grabs "applications"
                                         const pathParts = pathname.split('/').filter(Boolean);
                                         if (pathParts.length > 0) {
                                             const rawName = pathParts[0];
                                             const formattedName = rawName.charAt(0).toUpperCase() + rawName.slice(1);
 
-                                            // If there is a second part (like an ID or 'new'), add context
                                             if (pathParts.length > 1 && pathParts[1] === "new") {
                                                 return `Add New ${formattedName} | ${baseTitle}`;
                                             }
