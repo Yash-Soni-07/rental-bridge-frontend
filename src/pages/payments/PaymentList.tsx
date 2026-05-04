@@ -1,5 +1,5 @@
 // src/pages/payments/PaymentList.tsx
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useList, useGetIdentity, usePermissions } from "@refinedev/core";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -21,31 +21,6 @@ const PAYMENT_STATUS_BADGE: Record<string, "default" | "secondary" | "destructiv
     overdue: "destructive",
 };
 
-function formatDate(dateStr: string | null | undefined) {
-    if (!dateStr) return "—";
-    return new Date(dateStr).toLocaleDateString("en-IN", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-    });
-}
-
-function formatCurrency(amount: string | number) {
-    return `₹${Number(amount).toLocaleString("en-IN")}`;
-}
-
-/**
- * Strategy:
- * - For tenants: fetch their bookings first, then all payments per booking
- * - For landlord/admin: fetch all payments directly from /payments
- *
- * Since the backend has /payments (admin list) we use that for admin.
- * Tenants use /bookings/tenant/:id → then /payments/booking/:bookingId per booking.
- *
- * To keep it simple and avoid N+1 waterfalls we show payments differently per role:
- * - Tenant: list bookings → expand to show payments inline
- * - Admin/Landlord: direct /payments list
- */
 export const PaymentList: React.FC = () => {
     const { data: user, isLoading: userLoading } = useGetIdentity<User>();
     const { data: role, isLoading: roleLoading } = usePermissions<string>({});
@@ -73,6 +48,20 @@ export const PaymentList: React.FC = () => {
         (isTenant && bookingsQuery.isLoading) ||
         (isAdmin && allPaymentsQuery.isLoading);
 
+    // PRODUCTION FIX: Memoize the admin search filtering to prevent performance lag on re-renders
+    const filteredAdminPayments = useMemo(() => {
+        const payments = allPaymentsResult?.data ?? [];
+        if (!search) return payments;
+        
+        const term = search.toLowerCase();
+        return payments.filter((p) =>
+            String(p.id).includes(term) ||
+            String(p.booking_id).includes(term) ||
+            p.payment_type?.toLowerCase().includes(term) ||
+            p.status?.toLowerCase().includes(term)
+        );
+    }, [allPaymentsResult?.data, search]);
+
     if (isLoading) {
         return (
             <div className="container mx-auto p-6 space-y-6">
@@ -84,30 +73,15 @@ export const PaymentList: React.FC = () => {
         );
     }
 
-    // Tenant view: show bookings as grouped containers
     if (isTenant) {
-        const bookings = bookingsResult?.data ?? [];
         return (
             <TenantPaymentView
-                bookings={bookings}
-                userId={user?.id}
+                bookings={bookingsResult?.data ?? []}
                 search={search}
                 setSearch={setSearch}
             />
         );
     }
-
-    // Admin/Landlord view: flat payment list
-    const allPayments = (allPaymentsResult?.data ?? []).filter((p) => {
-        const term = search.toLowerCase();
-        return (
-            !term ||
-            String(p.id).includes(term) ||
-            String(p.booking_id).includes(term) ||
-            p.payment_type?.toLowerCase().includes(term) ||
-            p.status?.toLowerCase().includes(term)
-        );
-    });
 
     return (
         <div className="container mx-auto p-6 space-y-6">
@@ -116,7 +90,7 @@ export const PaymentList: React.FC = () => {
                     <CreditCard className="h-7 w-7 text-amber-500" />
                     <div>
                         <h1 className="text-2xl font-bold tracking-tight">All Payments</h1>
-                        <p className="text-sm text-muted-foreground">{allPayments.length} records</p>
+                        <p className="text-sm text-muted-foreground">{filteredAdminPayments.length} records</p>
                     </div>
                 </div>
                 <div className="relative max-w-xs w-full">
@@ -130,14 +104,14 @@ export const PaymentList: React.FC = () => {
                 </div>
             </div>
 
-            {allPayments.length === 0 ? (
+            {filteredAdminPayments.length === 0 ? (
                 <Card className="flex flex-col items-center justify-center p-12 border-dashed bg-muted/10">
                     <CreditCard className="h-12 w-12 text-muted-foreground mb-4" />
                     <p className="text-muted-foreground font-medium">No payments found</p>
                 </Card>
             ) : (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {allPayments.map((payment) => (
+                    {filteredAdminPayments.map((payment) => (
                         <PaymentCard key={payment.id} payment={payment} />
                     ))}
                 </div>
@@ -146,18 +120,26 @@ export const PaymentList: React.FC = () => {
     );
 };
 
-/** Tenant-specific view: show each booking with a nested payment fetcher */
 function TenantPaymentView({
     bookings,
-    userId,
     search,
     setSearch,
 }: {
     bookings: Booking[];
-    userId: number | undefined;
     search: string;
     setSearch: (s: string) => void;
 }) {
+    // PRODUCTION FIX: The search state was previously ignored. We now filter the 
+    // parent bookings before mapping them to prevent firing unnecessary network requests.
+    const filteredBookings = useMemo(() => {
+        if (!search) return bookings;
+        const term = search.toLowerCase();
+        return bookings.filter((b) =>
+            String(b.id).includes(term) ||
+            String(b.property_id).includes(term)
+        );
+    }, [bookings, search]);
+
     return (
         <div className="container mx-auto p-6 space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -171,7 +153,7 @@ function TenantPaymentView({
                 <div className="relative max-w-xs w-full">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
-                        placeholder="Search bookings..."
+                        placeholder="Search by Booking or Property ID..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         className="pl-9"
@@ -179,14 +161,16 @@ function TenantPaymentView({
                 </div>
             </div>
 
-            {bookings.length === 0 ? (
+            {filteredBookings.length === 0 ? (
                 <Card className="flex flex-col items-center justify-center p-12 border-dashed bg-muted/10">
                     <CreditCard className="h-12 w-12 text-muted-foreground mb-4" />
-                    <p className="text-muted-foreground font-medium">No bookings — no payments yet.</p>
+                    <p className="text-muted-foreground font-medium">
+                        {search ? "No bookings match your search." : "No bookings — no payments yet."}
+                    </p>
                 </Card>
             ) : (
                 <div className="space-y-6">
-                    {bookings.map((booking) => (
+                    {filteredBookings.map((booking) => (
                         <BookingPaymentSection key={booking.id} booking={booking} />
                     ))}
                 </div>
@@ -195,7 +179,6 @@ function TenantPaymentView({
     );
 }
 
-/** Fetches and renders payments for a single booking */
 function BookingPaymentSection({ booking }: { booking: Booking }) {
     const { result, query } = useList<Payment>({
         resource: `payments/booking/${booking.id}`,
@@ -225,7 +208,6 @@ function BookingPaymentSection({ booking }: { booking: Booking }) {
     );
 }
 
-/** Reusable payment card */
 function PaymentCard({ payment }: { payment: Payment }) {
     const statusIcon = PAYMENT_STATUS_ICON[payment.status] ?? null;
     const badgeVariant = PAYMENT_STATUS_BADGE[payment.status] ?? "outline";
