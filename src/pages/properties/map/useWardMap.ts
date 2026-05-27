@@ -29,7 +29,15 @@ export interface WardCount {
 // Ward names MUST match the GeoJSON feature names after normalize().
 // Verified against: datameet/Municipal_Spatial_Data/master/Ahmedabad/Wards.geojson
 
-export const ZONES = [
+// Define a clean interface for the Zone structure to allow flexible array lookups
+interface ZoneConfig {
+    readonly id: "CENTRAL" | "EAST" | "NORTH" | "NORTH_WEST" | "SOUTH" | "SOUTH_WEST" | "WEST";
+    readonly name: string;
+    readonly color: string;
+    readonly wards: readonly string[]; // <--- Crucial: string[] instead of exact literal values
+}
+
+export const ZONES: readonly ZoneConfig[] = [
     {
         id: "CENTRAL" as const,
         name: "Central",
@@ -72,7 +80,7 @@ export const ZONES = [
         color: "#06b6d4",
         wards: ["RANIP", "CHANDKHEDA", "SABARMATI", "NARANPURA", "NEW WADAJ", "S.P.STADIUM", "NAVRANGPURA", "PALDI", "VASNA"],
     },
-] as const;
+];
 
 export type ZoneId = typeof ZONES[number]["id"];
 export type Zone = typeof ZONES[number];
@@ -95,7 +103,8 @@ export function normalize(s: string): string {
 
 export function getZoneForWard(wardName: string): Zone | null {
     const upper = wardName.toUpperCase();
-    return (ZONES.find((z) => z.wards.includes(upper as any)) ?? null) as Zone | null;
+    // Casting 'z.wards' as a standard string array during the search overrides the strict literal constraint safely
+    return (ZONES.find((z) => (z.wards as readonly string[]).includes(upper)) ?? null) as Zone | null;
 }
 
 export function getZoneColor(wardName: string): string {
