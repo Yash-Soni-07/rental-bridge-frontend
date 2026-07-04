@@ -13,6 +13,7 @@ import { fetchListingDetail, type ListingDetail } from "./useMapListings";
 import { formatCr, formatRent, formatPerSqft } from "@/lib/formatPrice";
 import { WorkspaceCommuteCard } from "./WorkspaceCommuteCard";
 import { NearbyAmenitiesCard } from "./NearbyAmenitiesCard";
+import { InquiryCard } from "./InquiryCard";
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -199,6 +200,9 @@ export function ListingDetailSheet({
                                 propertyLng={detail.longitude}
                             />
                         )}
+
+                        {/* ── Inquiry Card ── */}
+                        <InquiryCard property={detail} />
 
                         {/* ── Footer actions ── */}
                         <div className="px-6 py-4 border-t space-y-3">
