@@ -12,6 +12,7 @@ import { ExternalLink, AlertTriangle, MapPin } from "lucide-react";
 import { fetchListingDetail, type ListingDetail } from "./useMapListings";
 import { formatCr, formatRent, formatPerSqft } from "@/lib/formatPrice";
 import { WorkspaceCommuteCard } from "./WorkspaceCommuteCard";
+import { NearbyAmenitiesCard } from "./NearbyAmenitiesCard";
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -73,7 +74,7 @@ export function ListingDetailSheet({
                         <p className="text-sm text-muted-foreground">{fetchError}</p>
                     </div>
                 ) : detail ? (
-                    <div className="flex flex-col h-full">
+                    <div className="flex flex-col">
                         {/* ── Header ── */}
                         <div className="px-6 pt-6 pb-4 border-b">
                             <SheetHeader className="text-left space-y-1">
@@ -128,7 +129,7 @@ export function ListingDetailSheet({
                         )}
 
                         {/* ── Pricing ── */}
-                        <div className="px-6 py-4 space-y-5 flex-1">
+                        <div className="px-6 py-4 space-y-5">
 
                             {/* Estimated Rent */}
                             {showRent && detail.est_monthly_rent && (
@@ -186,6 +187,14 @@ export function ListingDetailSheet({
                         {/* ── Workspace Commute Card ── */}
                         {detail.latitude && detail.longitude && (
                             <WorkspaceCommuteCard
+                                propertyLat={detail.latitude}
+                                propertyLng={detail.longitude}
+                            />
+                        )}
+
+                        {/* ── Nearby Amenities Card ── */}
+                        {detail.latitude && detail.longitude && (
+                            <NearbyAmenitiesCard
                                 propertyLat={detail.latitude}
                                 propertyLng={detail.longitude}
                             />
