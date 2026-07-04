@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ExternalLink, AlertTriangle, MapPin } from "lucide-react";
 import { fetchListingDetail, type ListingDetail } from "./useMapListings";
 import { formatCr, formatRent, formatPerSqft } from "@/lib/formatPrice";
+import { WorkspaceCommuteCard } from "./WorkspaceCommuteCard";
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -181,6 +182,14 @@ export function ListingDetailSheet({
                                 </div>
                             )}
                         </div>
+
+                        {/* ── Workspace Commute Card ── */}
+                        {detail.latitude && detail.longitude && (
+                            <WorkspaceCommuteCard
+                                propertyLat={detail.latitude}
+                                propertyLng={detail.longitude}
+                            />
+                        )}
 
                         {/* ── Footer actions ── */}
                         <div className="px-6 py-4 border-t space-y-3">
