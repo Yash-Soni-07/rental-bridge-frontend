@@ -146,47 +146,66 @@ export function SidebarContent({ collapsed = false, onNavigate }: SidebarContent
         <div className="flex flex-col h-full">
             {/* Brand header */}
             <div
-                className={`flex items-center gap-3 px-4 py-5 ${collapsed ? "justify-center" : ""}`}
+                className={`flex items-center ${collapsed ? "flex-col gap-3 py-4 justify-center" : "justify-between px-4 py-5"}`}
             >
-                <div className="flex-shrink-0 p-1.5 bg-primary rounded-lg">
-                    <Home className="h-5 w-5 text-primary-foreground" />
+                <div className="flex items-center gap-3">
+                    <div className="flex-shrink-0 p-1.5 bg-primary rounded-lg">
+                        <Home className="h-5 w-5 text-primary-foreground" />
+                    </div>
+                    {!collapsed && (
+                        <span className="text-base font-bold tracking-tight truncate">
+                            Rental Bridge
+                        </span>
+                    )}
                 </div>
-                {!collapsed && (
-                    <span className="text-base font-bold tracking-tight truncate">
-                        Rental Bridge
-                    </span>
-                )}
+                <ModeToggle />
             </div>
 
             <Separator />
 
             {/* User info */}
             {!collapsed && (
-                <div className="px-4 py-4 flex items-center gap-3">
-                    <Avatar className="h-9 w-9 flex-shrink-0">
-                        <AvatarFallback className="text-xs font-semibold bg-primary text-primary-foreground">
-                            {initials}
-                        </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium leading-tight truncate">{displayName}</p>
-                        <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
-                        {role && (
-                            <Badge variant="secondary" className="capitalize text-[10px] mt-0.5 h-4 px-1.5">
-                                {role}
-                            </Badge>
-                        )}
+                <div className="px-4 py-4 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <Avatar className="h-9 w-9 flex-shrink-0">
+                            <AvatarFallback className="text-xs font-semibold bg-primary text-primary-foreground">
+                                {initials}
+                            </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium leading-tight truncate">{displayName}</p>
+                            <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+                            {role && (
+                                <Badge variant="secondary" className="capitalize text-[10px] mt-0.5 h-4 px-1.5">
+                                    {role}
+                                </Badge>
+                            )}
+                        </div>
                     </div>
+                    <button
+                        onClick={() => logout()}
+                        title="Log out"
+                        className="flex items-center justify-center p-2 rounded-lg text-destructive hover:bg-destructive/10 transition-colors cursor-pointer border-none bg-transparent flex-shrink-0"
+                    >
+                        <LogOut className="h-5 w-5" />
+                    </button>
                 </div>
             )}
 
             {collapsed && (
-                <div className="px-2 py-3 flex justify-center">
+                <div className="px-2 py-3 flex flex-col items-center gap-2">
                     <Avatar className="h-8 w-8">
                         <AvatarFallback className="text-xs font-semibold bg-primary text-primary-foreground">
                             {initials}
                         </AvatarFallback>
                     </Avatar>
+                    <button
+                        onClick={() => logout()}
+                        title="Log out"
+                        className="flex items-center justify-center p-1.5 rounded-lg text-destructive hover:bg-destructive/10 transition-colors cursor-pointer border-none bg-transparent"
+                    >
+                        <LogOut className="h-4 w-4" />
+                    </button>
                 </div>
             )}
 
@@ -221,25 +240,7 @@ export function SidebarContent({ collapsed = false, onNavigate }: SidebarContent
                 })}
             </nav>
 
-            <Separator />
 
-            {/* Bottom controls */}
-            <div className={`px-2 py-3 flex items-center ${collapsed ? "flex-col gap-2" : "gap-2"}`}>
-                <ModeToggle />
-                <button
-                    onClick={() => logout()}
-                    title="Log out"
-                    className={`
-                        flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium
-                        text-destructive hover:bg-destructive/10 transition-colors cursor-pointer
-                        border-none bg-transparent
-                        ${collapsed ? "justify-center px-2 w-full" : "flex-1"}
-                    `}
-                >
-                    <LogOut className="h-4 w-4 flex-shrink-0" />
-                    {!collapsed && <span>Log out</span>}
-                </button>
-            </div>
         </div>
     );
 }
