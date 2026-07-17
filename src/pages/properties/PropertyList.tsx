@@ -9,9 +9,17 @@ import { X } from "lucide-react";
 import { PropertyImage } from "@/components/PropertyImage";
 import { PropertyFilterBar } from "./map/PropertyFilterBar";
 import { PropertyMapView } from "./map/PropertyMapView";
+import { PropertyImageCarousel } from "./map/PropertyImageCarousel";
 import { ListingDetailView } from "./map/ListingDetailView";
 import { useMapListings, type MapPin } from "./map/useMapListings";
 import { getZoneColor, type WardCount } from "./map/useWardMap";
+import {
+    Pagination,
+    PaginationContent,
+    PaginationItem,
+    PaginationNext,
+    PaginationPrevious,
+} from "@/components/ui/pagination";
 
 // ─── API base ─────────────────────────────────────────────────────────────────
 const API_BASE = (import.meta.env.VITE_API_URL ?? "http://localhost:3000/api")
@@ -30,6 +38,9 @@ interface Property {
     monthly_rent: number;
     latitude?: number | null;
     longitude?: number | null;
+    listing_id?: number | null;
+    property_type?: string;
+    city?: string;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -66,12 +77,36 @@ export const PropertyList = () => {
     const { isLoading: cardsLoading, isError, error } = query;
     const allProperties = result?.data ?? [];
 
+    const [featuredProperties, setFeaturedProperties] = useState<Property[]>([]);
+    const [featuredLoading, setFeaturedLoading] = useState(false);
+    const [featuredPage, setFeaturedPage] = useState(1);
+    const [featuredTotal, setFeaturedTotal] = useState(0);
+
+    useEffect(() => {
+        if (!activeWard) {
+            setFeaturedLoading(true);
+            fetch(`${API_BASE}/api/properties/featured?page=${featuredPage}&limit=20`)
+                .then(r => r.json())
+                .then(res => {
+                    setFeaturedProperties(res.data || []);
+                    setFeaturedTotal(res.total || 0);
+                    setFeaturedLoading(false);
+                })
+                .catch(err => {
+                    console.error("Failed to fetch featured properties", err);
+                    setFeaturedLoading(false);
+                });
+        }
+    }, [activeWard, featuredPage]);
+
     // Client-side filter: match properties whose address contains the active ward
     const properties = activeWard
         ? allProperties.filter((p) =>
             p.address?.toUpperCase().includes(activeWard)
         )
-        : allProperties;
+        : featuredProperties;
+    
+    const displayLoading = activeWard ? cardsLoading : featuredLoading;
 
     // ── Map interaction state ─────────────────────────────────────────────────
     const [selectedPin, setSelectedPin] = useState<MapPin | null>(null);
@@ -84,6 +119,11 @@ export const PropertyList = () => {
     }
 
     function handleCardClick(property: Property) {
+        if (!activeWard && property.listing_id) {
+            setSelectedPin({ id: property.listing_id } as MapPin);
+            return;
+        }
+
         if (property.latitude && property.longitude) {
             setFlyToCoords({ lat: property.latitude, lng: property.longitude });
         }
@@ -98,6 +138,7 @@ export const PropertyList = () => {
             updateFilter("ward", name.toUpperCase());
         } else {
             setActiveWard(null);
+            setFeaturedPage(1);
             updateFilter("ward", "");
         }
     }, [updateFilter]);
@@ -105,6 +146,7 @@ export const PropertyList = () => {
     function handleReset() {
         resetFilters();
         setActiveWard(null);
+        setFeaturedPage(1);
     }
 
     // Zone color for the active ward badge
@@ -161,7 +203,7 @@ export const PropertyList = () => {
                             {/* Panel header */}
                             <div className="flex items-center justify-between mb-4 gap-2 flex-wrap">
                                 <div className="flex items-center gap-2">
-                                    <h1 className="text-xl font-bold">Properties</h1>
+                                    <h1 className="text-xl font-bold">{activeWard ? "Properties" : "Featured Properties"}</h1>
                                     {activeWard && (
                                         <Badge
                                             variant="secondary"
@@ -177,20 +219,23 @@ export const PropertyList = () => {
                                         </Badge>
                                     )}
                                 </div>
-                                {!cardsLoading && (
+                                {!displayLoading && (
                                     <span className="text-xs text-muted-foreground">
-                                        {properties.length} rental{properties.length !== 1 ? "s" : ""}
-                                        {activeWard ? ` in ${activeWard}` : " listed"}
+                                        {activeWard ? (
+                                            <>{properties.length} rental{properties.length !== 1 ? "s" : ""} in {activeWard}</>
+                                        ) : (
+                                            <>{featuredTotal} featured rentals</>
+                                        )}
                                     </span>
                                 )}
                             </div>
 
                             {/* Loading skeletons */}
-                            {cardsLoading && (
+                            {displayLoading && (
                                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
                                     {[...Array(4)].map((_, i) => (
                                         <Card key={i}>
-                                            <Skeleton className="h-36 w-full rounded-t-xl" />
+                                            <Skeleton className="h-48 w-full rounded-t-xl" />
                                             <CardHeader><Skeleton className="h-5 w-3/4" /></CardHeader>
                                             <CardContent>
                                                 <Skeleton className="h-4 w-full mb-2" />
@@ -210,12 +255,12 @@ export const PropertyList = () => {
                             )}
 
                             {/* Empty state */}
-                            {!cardsLoading && !isError && properties.length === 0 && (
+                            {!displayLoading && !isError && properties.length === 0 && (
                                 <div className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground">
                                     <p className="text-sm">
                                         {activeWard
                                             ? `No verified rentals in ${activeWard} ward yet.`
-                                            : "No rental properties listed yet."}
+                                            : "No featured properties listed yet."}
                                     </p>
                                     {activeWard && (
                                         <Button
@@ -230,7 +275,7 @@ export const PropertyList = () => {
                             )}
 
                             {/* Property cards */}
-                            {!cardsLoading && !isError && properties.length > 0 && (
+                            {!displayLoading && !isError && properties.length > 0 && (
                                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
                                     {properties.map((property) => (
                                         <Card
@@ -239,7 +284,18 @@ export const PropertyList = () => {
                                             onMouseEnter={() => setHighlightedPinId(property.id)}
                                             onMouseLeave={() => setHighlightedPinId(null)}
                                         >
-                                            <PropertyImage propertyId={property.id} />
+                                            {!activeWard && property.listing_id ? (
+                                                <div className="h-48 overflow-hidden rounded-t-xl">
+                                                    <PropertyImageCarousel 
+                                                        propertyId={property.listing_id} 
+                                                        propertyName={property.title} 
+                                                        propertyCity={property.city || "Ahmedabad"} 
+                                                        propertyType={property.property_type || "apartment"} 
+                                                    />
+                                                </div>
+                                            ) : (
+                                                <PropertyImage propertyId={property.id} />
+                                            )}
                                             <CardHeader>
                                                 <CardTitle className="line-clamp-1 text-base">
                                                     {property.title}
@@ -271,6 +327,33 @@ export const PropertyList = () => {
                                             </CardFooter>
                                         </Card>
                                     ))}
+                                </div>
+                            )}
+
+                            {/* Pagination (Featured only) */}
+                            {!activeWard && !displayLoading && featuredTotal > 20 && (
+                                <div className="mt-8 mb-4">
+                                    <Pagination>
+                                        <PaginationContent>
+                                            <PaginationItem>
+                                                <PaginationPrevious 
+                                                    onClick={() => setFeaturedPage(p => Math.max(1, p - 1))} 
+                                                    className={featuredPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                                                />
+                                            </PaginationItem>
+                                            <PaginationItem>
+                                                <span className="text-sm text-muted-foreground px-4">
+                                                    Page {featuredPage} of {Math.ceil(featuredTotal / 20)}
+                                                </span>
+                                            </PaginationItem>
+                                            <PaginationItem>
+                                                <PaginationNext 
+                                                    onClick={() => setFeaturedPage(p => Math.min(Math.ceil(featuredTotal / 20), p + 1))}
+                                                    className={featuredPage >= Math.ceil(featuredTotal / 20) ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                                                />
+                                            </PaginationItem>
+                                        </PaginationContent>
+                                    </Pagination>
                                 </div>
                             )}
                         </div>
