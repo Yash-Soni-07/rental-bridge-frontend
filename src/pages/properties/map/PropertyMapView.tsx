@@ -22,7 +22,9 @@ import "react-leaflet-cluster/dist/assets/MarkerCluster.Default.css";
 const AHMEDABAD_CENTER: [number, number] = [23.0225, 72.5714];
 const DEFAULT_ZOOM = 11;
 
-/** Level 1 (city) → Level 2 (wards): zoom threshold */
+/** Level 0 (Ahmedabad city) -> Level 1 (zones): zoom threshold */
+const CITY_ZOOM_THRESHOLD = 11;
+/** Level 1 (zones) → Level 2 (wards): zoom threshold */
 const ZONE_ZOOM_THRESHOLD = 12;
 /** Level 2 (wards) → Level 3 (pins): zoom threshold */
 export const WARD_ZOOM_THRESHOLD = 14;
@@ -51,6 +53,70 @@ function useDarkMode(): boolean {
 }
 
 // ─── Icon factories ───────────────────────────────────────────────────────────
+
+/**
+ * Level 0 — City marker: large circular brand marker representing Ahmedabad.
+ * Dynamically scales down (shrinks) as the map is zoomed out below 11.
+ */
+function makeCityIcon(totalCount: number, currentZoom: number): L.DivIcon {
+    const baseZoom = 11;
+    // Shrink size by 14px per zoom level below 11, down to a minimum of 18px
+    const size = Math.max(18, 68 - Math.max(0, baseZoom - currentZoom) * 14);
+
+    const color = "#6366f1"; // Brand indigo
+    const bg = hexToRgba(color, 0.76);
+    const border = hexToRgba(color, 0.95);
+    const shadow = hexToRgba(color, 0.42);
+    const countStr = totalCount > 999 ? `${(totalCount / 1000).toFixed(1)}k` : String(totalCount);
+
+    let innerHtml = "";
+    if (size >= 50) {
+        // Show both "Ahmedabad" and listing count
+        const nameFontSize = size >= 60 ? "10px" : "8px";
+        const countFontSize = size >= 60 ? "9.5px" : "8.5px";
+        innerHtml = `
+            <span style="color:white;font-size:${nameFontSize};font-weight:800;
+                font-family:system-ui,-apple-system,sans-serif;
+                text-shadow:0 1.5px 3px rgba(0,0,0,0.5);
+                line-height:1.2;text-align:center;padding:0 4px;
+                text-transform:uppercase;letter-spacing:0.03em;
+            ">Ahmedabad</span>
+            <span style="color:white;font-size:${countFontSize};font-weight:700;opacity:0.92;
+                font-family:system-ui,-apple-system,sans-serif;
+                text-shadow:0 1px 2px rgba(0,0,0,0.4);
+            ">${countStr}</span>
+        `;
+    } else if (size >= 30) {
+        // Show only listing count
+        const countFontSize = size >= 40 ? "9px" : "8px";
+        innerHtml = `
+            <span style="color:white;font-size:${countFontSize};font-weight:700;
+                font-family:system-ui,-apple-system,sans-serif;
+                text-shadow:0 1px 2px rgba(0,0,0,0.4);
+            ">${countStr}</span>
+        `;
+    } else {
+        // Too small: show solid dot indicator
+        innerHtml = "";
+    }
+
+    const borderWidth = size >= 50 ? 3 : size >= 30 ? 2 : 1.5;
+
+    return L.divIcon({
+        html: `<div style="
+            width:${size}px;height:${size}px;border-radius:50%;
+            background:${bg};
+            backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
+            border:${borderWidth}px solid ${border};
+            box-shadow:0 6px 20px ${shadow},0 1.5px 6px rgba(0,0,0,0.22);
+            display:flex;flex-direction:column;align-items:center;justify-content:center;
+            cursor:pointer;
+        ">${innerHtml}</div>`,
+        className: "",
+        iconSize: L.point(size, size),
+        iconAnchor: L.point(size / 2, size / 2),
+    });
+}
 
 /**
  * Level 1 — Zone marker: large semi-transparent colored circle.
@@ -269,7 +335,13 @@ export function PropertyMapView({
     } = useWardMap();
 
     // ── State machine ──────────────────────────────────────────────────────────
-    const [renderLevel, setRenderLevel] = useState<1 | 2 | 3>(1);
+    const [renderLevel, setRenderLevel] = useState<0 | 1 | 2 | 3>(() => {
+        if (DEFAULT_ZOOM < CITY_ZOOM_THRESHOLD) return 0;
+        if (DEFAULT_ZOOM < ZONE_ZOOM_THRESHOLD) return 1;
+        if (DEFAULT_ZOOM < WARD_ZOOM_THRESHOLD) return 2;
+        return 3;
+    });
+    const [currentZoom, setCurrentZoom] = useState<number>(DEFAULT_ZOOM);
     const [activeWardName, setActiveWardName] = useState<string | null>(null);
     const [activeBoundaryFeature, setActiveBoundaryFeature] = useState<GeoJSON.Feature | null>(null);
     const [flyReq, setFlyReq] = useState<FlyToBoundsReq | null>(null);
@@ -290,12 +362,20 @@ export function PropertyMapView({
     // updater — calling a parent setState inside setRenderLevel(prev => {...})
     // violates React's "no setState during render" rule.
     function handleZoomChange(zoom: number) {
+        setCurrentZoom(zoom);
         // Skip level transitions while flyToBounds / flyTo animation is in progress.
         // The fly animation temporarily passes through intermediate zoom values that
         // would otherwise incorrectly trigger a level reset.
         if (isAnimatingRef.current) return;
 
-        if (zoom < ZONE_ZOOM_THRESHOLD) {
+        if (zoom < CITY_ZOOM_THRESHOLD) {
+            if (renderLevel !== 0) {
+                setActiveWardName(null);
+                setActiveBoundaryFeature(null);
+                setRenderLevel(0);
+                onWardClick("");      // parent setState — called AFTER child setters
+            }
+        } else if (zoom < ZONE_ZOOM_THRESHOLD) {
             if (renderLevel !== 1) {
                 setActiveWardName(null);
                 setActiveBoundaryFeature(null);
@@ -310,6 +390,21 @@ export function PropertyMapView({
         }
         onZoomChange(zoom);
     }
+
+    // ── City click (Level 0 → Level 1) ────────────────────────────────────────
+    const handleCityClick = useCallback(() => {
+        if (!wardReady) return;
+        // Fly to Ahmedabad center with zoom level 12 (ZONE_ZOOM_THRESHOLD)
+        setFlyReq((prev) => ({
+            bounds: [
+                [AHMEDABAD_CENTER[0] - 0.05, AHMEDABAD_CENTER[1] - 0.05],
+                [AHMEDABAD_CENTER[0] + 0.05, AHMEDABAD_CENTER[1] + 0.05]
+            ] as [[number, number], [number, number]],
+            seq: (prev?.seq ?? 0) + 1,
+            maxZoom: ZONE_ZOOM_THRESHOLD
+        }));
+        setRenderLevel(1);
+    }, [wardReady]);
 
     // ── Zone click (Level 1 → Level 2) ────────────────────────────────────────
     const handleZoneClick = useCallback((zone: Zone) => {
@@ -355,6 +450,7 @@ export function PropertyMapView({
     // ── Status text ────────────────────────────────────────────────────────────
     const statusText = (() => {
         if (!wardReady) return "Loading map data…";
+        if (renderLevel === 0) return "Ahmedabad city · click to explore zones";
         if (renderLevel === 1) return "7 zones · click a zone to explore";
         if (renderLevel === 2) return "48 wards · click a ward to see listings";
         if (renderLevel === 3 && activeWardName) {
@@ -441,6 +537,25 @@ export function PropertyMapView({
                         })}
                     />
                 )}
+
+                {/* ── LEVEL 0: Single Ahmedabad city marker ── */}
+                {wardReady && renderLevel === 0 && (() => {
+                    const totalCount = wardCounts.reduce((sum, wc) => sum + wc.count, 0);
+                    return (
+                        <Marker
+                            position={AHMEDABAD_CENTER}
+                            icon={makeCityIcon(totalCount, currentZoom)}
+                            eventHandlers={{ click: handleCityClick }}
+                        >
+                            <Tooltip direction="top" offset={[0, -38]} opacity={0.96}>
+                                <span className="text-xs font-semibold">Ahmedabad City</span>
+                                <span className="text-xs text-muted-foreground ml-1">
+                                    · {totalCount.toLocaleString("en-IN")} listings
+                                </span>
+                            </Tooltip>
+                        </Marker>
+                    );
+                })()}
 
                 {/* ── LEVEL 1: 7 zone markers ── */}
                 {wardReady && renderLevel === 1 && ZONES.map((zone) => {
@@ -546,7 +661,9 @@ export function PropertyMapView({
             <div className="absolute bottom-4 left-3 z-[1000] bg-background/90 backdrop-blur-sm border rounded-lg px-3 py-2 text-xs shadow-sm pointer-events-none">
                 {renderLevel < 3 ? (
                     <div className="text-muted-foreground italic">
-                        {renderLevel === 1 ? "Click a zone to see wards" : "Click a ward to see listings"}
+                        {renderLevel === 0 && "Click Ahmedabad to see zones"}
+                        {renderLevel === 1 && "Click a zone to see wards"}
+                        {renderLevel === 2 && "Click a ward to see listings"}
                     </div>
                 ) : (
                     <div className="space-y-1">

@@ -9,7 +9,7 @@ import { X } from "lucide-react";
 import { PropertyImage } from "@/components/PropertyImage";
 import { PropertyFilterBar } from "./map/PropertyFilterBar";
 import { PropertyMapView } from "./map/PropertyMapView";
-import { ListingDetailSheet } from "./map/ListingDetailSheet";
+import { ListingDetailView } from "./map/ListingDetailView";
 import { useMapListings, type MapPin } from "./map/useMapListings";
 import { getZoneColor, type WardCount } from "./map/useWardMap";
 
@@ -156,8 +156,8 @@ export const PropertyList = () => {
                     </PanelResizeHandle>
 
                     {/* Property cards panel */}
-                    <Panel defaultSize={50} minSize={25} maxSize={75} className="overflow-y-auto">
-                        <div className="p-4">
+                    <Panel defaultSize={50} minSize={25} maxSize={75} className="relative overflow-hidden">
+                        <div className="h-full overflow-y-auto p-4">
                             {/* Panel header */}
                             <div className="flex items-center justify-between mb-4 gap-2 flex-wrap">
                                 <div className="flex items-center gap-2">
@@ -274,17 +274,18 @@ export const PropertyList = () => {
                                 </div>
                             )}
                         </div>
+
+                        {/* Embedded Listing Detail View */}
+                        <ListingDetailView
+                            listingId={selectedPin?.id ?? null}
+                            showRent={filters.showRent}
+                            showSale={filters.showSale}
+                            onClose={() => setSelectedPin(null)}
+                        />
                     </Panel>
                 </PanelGroup>
             </div>
 
-            {/* Listing detail slide-in sheet */}
-            <ListingDetailSheet
-                listingId={selectedPin?.id ?? null}
-                showRent={filters.showRent}
-                showSale={filters.showSale}
-                onClose={() => setSelectedPin(null)}
-            />
         </div>
     );
 };
