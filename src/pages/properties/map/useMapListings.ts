@@ -63,6 +63,8 @@ export interface MapFilters {
     locality: string;
     ward: string;          // AMC ward name — when set, fetches all pins for this ward (no viewport)
     viewport: ViewportBounds | null; // null = no bounding box (initial state)
+    sortBy: string;
+    sortOrder: string;
 }
 
 const DEFAULT_FILTERS: MapFilters = {
@@ -76,6 +78,8 @@ const DEFAULT_FILTERS: MapFilters = {
     locality: "",
     ward: "",
     viewport: null, // will be set by the map on first render
+    sortBy: "id",
+    sortOrder: "asc",
 };
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────

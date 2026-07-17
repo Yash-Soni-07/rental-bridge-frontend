@@ -82,10 +82,60 @@ export const PropertyList = () => {
     const [featuredPage, setFeaturedPage] = useState(1);
     const [featuredTotal, setFeaturedTotal] = useState(0);
 
+    // Reset page to 1 when filters change
+    useEffect(() => {
+        setFeaturedPage(1);
+    }, [
+        filters.bhk,
+        filters.rentMin,
+        filters.rentMax,
+        filters.priceMin,
+        filters.priceMax,
+        filters.locality,
+        filters.showRent,
+        filters.showSale,
+        filters.sortBy,
+        filters.sortOrder
+    ]);
+
     useEffect(() => {
         if (!activeWard) {
             setFeaturedLoading(true);
-            fetch(`${API_BASE}/api/properties/featured?page=${featuredPage}&limit=20`)
+            const params = new URLSearchParams();
+            params.set("page", String(featuredPage));
+            params.set("limit", "20");
+
+            if (filters.bhk.length > 0) {
+                params.set("bhk", filters.bhk.join(","));
+            }
+            if (filters.rentMin > 0) {
+                params.set("rent_min", String(filters.rentMin));
+            }
+            if (filters.rentMax < 150000) {
+                params.set("rent_max", String(filters.rentMax));
+            }
+            if (filters.priceMin > 0) {
+                params.set("price_min", String(filters.priceMin));
+            }
+            if (filters.priceMax < 20) {
+                params.set("price_max", String(filters.priceMax));
+            }
+            if (filters.locality.trim()) {
+                params.set("locality", filters.locality.trim());
+            }
+            if (filters.showRent && !filters.showSale) {
+                params.set("purpose", "rent,both");
+            } else if (!filters.showRent && filters.showSale) {
+                params.set("purpose", "sale,both");
+            }
+            if (filters.sortBy) {
+                params.set("sort_by", filters.sortBy);
+            }
+            if (filters.sortOrder) {
+                params.set("sort_order", filters.sortOrder);
+            }
+
+            fetch(`${API_BASE}/api/properties/featured?${params.toString()}`)
                 .then(r => r.json())
                 .then(res => {
                     setFeaturedProperties(res.data || []);
@@ -97,14 +147,54 @@ export const PropertyList = () => {
                     setFeaturedLoading(false);
                 });
         }
-    }, [activeWard, featuredPage]);
+    }, [activeWard, featuredPage, filters]);
 
-    // Client-side filter: match properties whose address contains the active ward
-    const properties = activeWard
-        ? allProperties.filter((p) =>
-            p.address?.toUpperCase().includes(activeWard)
-        )
+    // Client-side filter: match properties whose address contains the active ward and filters
+    const filteredProperties = activeWard
+        ? allProperties.filter((p) => {
+            const matchesWard = p.address?.toUpperCase().includes(activeWard);
+            if (!matchesWard) return false;
+
+            if (filters.bhk.length > 0) {
+                const matchesBhk = filters.bhk.includes(p.bedrooms) || (filters.bhk.includes(5) && p.bedrooms >= 5);
+                if (!matchesBhk) return false;
+            }
+
+            if (Number(p.monthly_rent) < filters.rentMin || Number(p.monthly_rent) > filters.rentMax) {
+                return false;
+            }
+
+            if (filters.locality.trim()) {
+                const loc = filters.locality.trim().toUpperCase();
+                if (!p.address.toUpperCase().includes(loc) && !p.title.toUpperCase().includes(loc)) {
+                    return false;
+                }
+            }
+
+            return true;
+        })
         : featuredProperties;
+
+    // Apply sorting
+    const properties = (() => {
+        const sorted = [...filteredProperties];
+        if (filters.sortBy && filters.sortOrder) {
+            const orderMultiplier = filters.sortOrder === "desc" ? -1 : 1;
+            sorted.sort((a, b) => {
+                if (filters.sortBy === "rent") {
+                    return (Number(a.monthly_rent) - Number(b.monthly_rent)) * orderMultiplier;
+                }
+                if (filters.sortBy === "area") {
+                    return (a.area_sqft - b.area_sqft) * orderMultiplier;
+                }
+                if (filters.sortBy === "bhk") {
+                    return (a.bedrooms - b.bedrooms) * orderMultiplier;
+                }
+                return (a.id - b.id) * orderMultiplier;
+            });
+        }
+        return sorted;
+    })();
     
     const displayLoading = activeWard ? cardsLoading : featuredLoading;
 
@@ -219,15 +309,34 @@ export const PropertyList = () => {
                                         </Badge>
                                     )}
                                 </div>
-                                {!displayLoading && (
-                                    <span className="text-xs text-muted-foreground">
-                                        {activeWard ? (
-                                            <>{properties.length} rental{properties.length !== 1 ? "s" : ""} in {activeWard}</>
-                                        ) : (
-                                            <>{featuredTotal} featured rentals</>
-                                        )}
-                                    </span>
-                                )}
+                                <div className="flex items-center gap-3">
+                                    <select
+                                        value={`${filters.sortBy}-${filters.sortOrder}`}
+                                        onChange={(e) => {
+                                            const [by, order] = e.target.value.split("-");
+                                            updateFilter("sortBy", by);
+                                            updateFilter("sortOrder", order);
+                                        }}
+                                        className="h-8 rounded-md border border-input bg-background px-2 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer hover:border-muted-foreground/30 transition-colors"
+                                    >
+                                        <option value="id-asc">Sort: Default</option>
+                                        <option value="rent-asc">Rent: Low to High</option>
+                                        <option value="rent-desc">Rent: High to Low</option>
+                                        <option value="area-asc">Area: Small to Large</option>
+                                        <option value="area-desc">Area: Large to Small</option>
+                                        <option value="bhk-asc">BHK: Low to High</option>
+                                        <option value="bhk-desc">BHK: High to Low</option>
+                                    </select>
+                                    {!displayLoading && (
+                                        <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                            {activeWard ? (
+                                                <>{properties.length} rental{properties.length !== 1 ? "s" : ""} in {activeWard}</>
+                                            ) : (
+                                                <>{featuredTotal} featured rentals</>
+                                            )}
+                                        </span>
+                                    )}
+                                </div>
                             </div>
 
                             {/* Loading skeletons */}
