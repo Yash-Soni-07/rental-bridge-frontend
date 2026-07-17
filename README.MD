@@ -152,7 +152,7 @@ The app will be available at `http://localhost:5173`.
 | `/login` | `Login` | Public |
 | `/register` | `Register` | Public |
 | `/` | Redirects to `/properties` | Public |
-| `/properties` | `PropertyList` | Authenticated |
+| `/properties` | `PropertyList` (Map View, Filtering, Pagination) | Authenticated |
 | `/properties/new` | `PropertyCreate` | Landlord / Admin |
 | `/properties/:id` | `PropertyShow` | Authenticated |
 | `/properties/:id/edit` | `PropertyEdit` | Owner / Admin |
@@ -218,6 +218,12 @@ A single image component with a built-in error fallback for broken image URLs.
 
 #### `AuthenticatedLayout`
 Wraps all protected routes. Contains the sidebar navigation, header with user info and theme toggle, and renders `<Outlet />` for child pages.
+
+#### `PropertyMapView`
+Renders an interactive map using `react-leaflet`. Supports clustering, zone-based visualizations (wards), and fly-to interactions for properties.
+
+#### `ListingDetailView`
+A comprehensive, role-aware slide-out panel used on the map view to display property details, commute times, amenities, and action buttons ("Apply Now" for tenants, "Edit Property" for admins/landlords).
 
 #### `StarRating` (in `PropertyShow.tsx`)
 A reusable interactive star-rating component. Renders in read-only mode when no `onChange` prop is provided.
