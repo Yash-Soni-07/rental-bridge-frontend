@@ -154,6 +154,39 @@ function makeZoneIcon(zone: Zone, totalCount: number): L.DivIcon {
     });
 }
 
+function makeOtherZonesIcon(totalCount: number): L.DivIcon {
+    const size = 58;
+    const color = "#64748b"; // Slate gray
+    const bg = hexToRgba(color, 0.72);
+    const border = hexToRgba(color, 0.90);
+    const shadow = hexToRgba(color, 0.38);
+    const countStr = totalCount > 999 ? `${(totalCount / 1000).toFixed(1)}k` : String(totalCount);
+    return L.divIcon({
+        html: `<div style="
+            width:${size}px;height:${size}px;border-radius:50%;
+            background:${bg};
+            backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
+            border:2.5px solid ${border};
+            box-shadow:0 4px 14px ${shadow},0 1px 4px rgba(0,0,0,0.18);
+            display:flex;flex-direction:column;align-items:center;justify-content:center;
+            cursor:pointer;
+        ">
+            <span style="color:white;font-size:9.5px;font-weight:700;
+                font-family:system-ui,-apple-system,sans-serif;
+                text-shadow:0 1px 2px rgba(0,0,0,0.45);
+                line-height:1.2;text-align:center;padding:0 4px;
+            ">Other Zones</span>
+            <span style="color:white;font-size:9px;font-weight:600;opacity:0.88;
+                font-family:system-ui,-apple-system,sans-serif;
+                text-shadow:0 1px 2px rgba(0,0,0,0.4);
+            ">${countStr}</span>
+        </div>`,
+        className: "",
+        iconSize: L.point(size, size),
+        iconAnchor: L.point(size / 2, size / 2),
+    });
+}
+
 /**
  * Level 2 — Ward marker: semi-transparent colored pill.
  * Same style as former locality pills.
@@ -346,6 +379,8 @@ export function PropertyMapView({
     const [activeBoundaryFeature, setActiveBoundaryFeature] = useState<GeoJSON.Feature | null>(null);
     const [flyReq, setFlyReq] = useState<FlyToBoundsReq | null>(null);
     const [isTransitionLoading, setIsTransitionLoading] = useState(false);
+    const [selectedZone, setSelectedZone] = useState<Zone | null>(null);
+    const [showOtherWards, setShowOtherWards] = useState(false);
 
     // Ref to block zoom-transition logic while flyToBounds animation is in progress
     const isAnimatingRef = useRef(false);
@@ -379,6 +414,8 @@ export function PropertyMapView({
             if (renderLevel !== 1) {
                 setActiveWardName(null);
                 setActiveBoundaryFeature(null);
+                setSelectedZone(null);
+                setShowOtherWards(false);
                 setRenderLevel(1);
                 onWardClick("");      // parent setState — called AFTER child setters
             }
@@ -411,6 +448,8 @@ export function PropertyMapView({
         if (!wardReady) return;
         const bounds = getZoneBounds(zone);
         if (bounds) flyTo(bounds, ZONE_ZOOM_THRESHOLD + 1);
+        setSelectedZone(zone);
+        setShowOtherWards(false);
         setRenderLevel(2);
     }, [wardReady, getZoneBounds]);
 
@@ -582,28 +621,73 @@ export function PropertyMapView({
                 })}
 
                 {/* ── LEVEL 2: 48 ward markers ── */}
-                {wardReady && renderLevel === 2 && ZONES.flatMap((zone) =>
-                    zone.wards.map((wardName) => {
-                        const centroid = getWardCentroid(wardName);
-                        if (!centroid) return null;
-                        const wc = wardCounts.find((w) => w.ward === wardName);
-                        const count = wc?.count ?? 0;
-                        return (
-                            <Marker
-                                key={wardName}
-                                position={centroid}
-                                icon={makeWardIcon(wardName, count, zone.color)}
-                                eventHandlers={{ click: () => handleWardClick(wardName) }}
-                            >
-                                <Tooltip direction="top" offset={[0, -16]} opacity={0.96}>
-                                    <span className="text-xs font-semibold">{wardName}</span>
-                                    <span className="text-xs text-muted-foreground ml-1">
-                                        · {count} listings
-                                    </span>
-                                </Tooltip>
-                            </Marker>
-                        );
-                    })
+                {wardReady && renderLevel === 2 && (
+                    <>
+                        {/* Wards of the selected zone (or all wards if no zone is selected, or if showOtherWards is true) */}
+                        {ZONES.flatMap((zone) => {
+                            const isSelected = selectedZone ? zone.id === selectedZone.id : true;
+                            if (!isSelected && !showOtherWards) return [];
+                            return zone.wards.map((wardName) => {
+                                const centroid = getWardCentroid(wardName);
+                                if (!centroid) return null;
+                                const wc = wardCounts.find((w) => w.ward === wardName);
+                                const count = wc?.count ?? 0;
+                                return (
+                                    <Marker
+                                        key={wardName}
+                                        position={centroid}
+                                        icon={makeWardIcon(wardName, count, zone.color)}
+                                        eventHandlers={{ click: () => handleWardClick(wardName) }}
+                                    >
+                                        <Tooltip direction="top" offset={[0, -16]} opacity={0.96}>
+                                            <span className="text-xs font-semibold">{wardName}</span>
+                                            <span className="text-xs text-muted-foreground ml-1">
+                                                · {count} listings
+                                            </span>
+                                        </Tooltip>
+                                    </Marker>
+                                );
+                            });
+                        })}
+
+                        {/* Combined "Other Zones" cluster marker */}
+                        {selectedZone && !showOtherWards && (() => {
+                            const otherZones = ZONES.filter((z) => z.id !== selectedZone.id);
+                            let sumLat = 0;
+                            let sumLng = 0;
+                            let count = 0;
+                            otherZones.forEach((z) => {
+                                const c = getZoneCentroid(z);
+                                if (c) {
+                                    sumLat += c[0];
+                                    sumLng += c[1];
+                                    count++;
+                                }
+                            });
+                            if (count === 0) return null;
+                            const otherCentroid: [number, number] = [sumLat / count, sumLng / count];
+                            
+                            const otherWardsList = otherZones.flatMap((z) => z.wards);
+                            const otherCount = wardCounts
+                                .filter((wc) => (otherWardsList as string[]).includes(wc.ward))
+                                .reduce((sum, wc) => sum + wc.count, 0);
+
+                            return (
+                                <Marker
+                                    position={otherCentroid}
+                                    icon={makeOtherZonesIcon(otherCount)}
+                                    eventHandlers={{ click: () => setShowOtherWards(true) }}
+                                >
+                                    <Tooltip direction="top" offset={[0, -32]} opacity={0.96}>
+                                        <span className="text-xs font-semibold">Other Zones</span>
+                                        <span className="text-xs text-muted-foreground ml-1">
+                                            · {otherCount.toLocaleString("en-IN")} listings (click to expand)
+                                        </span>
+                                    </Tooltip>
+                                </Marker>
+                            );
+                        })()}
+                    </>
                 )}
 
                 {/* ── LEVEL 3: Individual pins in active ward ── */}
