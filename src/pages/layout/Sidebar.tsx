@@ -95,7 +95,7 @@ const NAV_ITEMS: NavItem[] = [
         icon: PlusCircle,
         color: "text-primary",
         bgColor: "bg-primary/10",
-        roles: ["landlord"],
+        roles: ["landlord", "admin"],
     },
 ];
 

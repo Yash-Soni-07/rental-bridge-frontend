@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ExternalLink, AlertTriangle, MapPin, X, ArrowLeft } from "lucide-react";
+import { ExternalLink, AlertTriangle, MapPin, X, ArrowLeft, FileText, Pencil } from "lucide-react";
 import { fetchListingDetail, type ListingDetail } from "./useMapListings";
 import { formatCr, formatRent, formatPerSqft } from "@/lib/formatPrice";
 import { WorkspaceCommuteCard } from "./WorkspaceCommuteCard";
@@ -9,11 +9,16 @@ import { NearbyAmenitiesCard } from "./NearbyAmenitiesCard";
 import { InquiryCard } from "./InquiryCard";
 import { PropertyImageCarousel } from "./PropertyImageCarousel";
 import { Button } from "@/components/ui/button";
+import { useGo } from "@refinedev/core";
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 interface ListingDetailViewProps {
     listingId: number | null;
+    /** ID from the `properties` management table — enables Apply/Edit actions */
+    propertyId?: number | null;
+    /** Current user's role — determines which action buttons to show */
+    userRole?: string | null;
     showRent: boolean;
     showSale: boolean;
     onClose: () => void;
@@ -23,10 +28,13 @@ interface ListingDetailViewProps {
 
 export function ListingDetailView({
     listingId,
+    propertyId,
+    userRole,
     showRent,
     showSale,
     onClose,
 }: ListingDetailViewProps) {
+    const go = useGo();
     const [detail, setDetail] = useState<ListingDetail | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [fetchError, setFetchError] = useState<string | null>(null);
@@ -229,6 +237,33 @@ export function ListingDetailView({
 
                     {/* ── Footer actions ── */}
                     <div className="px-6 py-4 border-t space-y-3">
+
+                        {/* Role-based action buttons */}
+                        {propertyId && userRole === "tenant" && (
+                            <Button
+                                className="w-full gap-2"
+                                onClick={() =>
+                                    go({ to: `/applications/new`, query: { propertyId }, type: "push" })
+                                }
+                            >
+                                <FileText className="h-4 w-4" />
+                                Apply Now
+                            </Button>
+                        )}
+
+                        {propertyId && (userRole === "admin" || userRole === "landlord") && (
+                            <Button
+                                variant="outline"
+                                className="w-full gap-2"
+                                onClick={() =>
+                                    go({ to: `/properties/${propertyId}/edit`, type: "push" })
+                                }
+                            >
+                                <Pencil className="h-4 w-4" />
+                                Edit Property
+                            </Button>
+                        )}
+
                         {/* Data source disclaimer */}
                         <p className="text-[11px] text-muted-foreground leading-relaxed">
                             <AlertTriangle className="inline h-3 w-3 mr-1 text-amber-500" />

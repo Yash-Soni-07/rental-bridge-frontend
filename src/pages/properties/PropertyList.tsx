@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { useList, useGo } from "@refinedev/core";
+import { useList, useGo, usePermissions } from "@refinedev/core";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -198,8 +198,13 @@ export const PropertyList = () => {
     
     const displayLoading = activeWard ? cardsLoading : featuredLoading;
 
+    // ── Auth context for role-based actions ──────────────────────────────────
+    const { data: role } = usePermissions<string>({});
+
     // ── Map interaction state ─────────────────────────────────────────────────
     const [selectedPin, setSelectedPin] = useState<MapPin | null>(null);
+    // ID from the `properties` table (needed for apply/edit actions)
+    const [selectedPropertyId, setSelectedPropertyId] = useState<number | null>(null);
     const [highlightedPinId, setHighlightedPinId] = useState<number | null>(null);
     const [flyToCoords, setFlyToCoords] = useState<{ lat: number; lng: number } | null>(null);
 
@@ -210,7 +215,9 @@ export const PropertyList = () => {
 
     function handleCardClick(property: Property) {
         if (!activeWard && property.listing_id) {
+            // Open detail using property_listings id, also track properties table id
             setSelectedPin({ id: property.listing_id } as MapPin);
+            setSelectedPropertyId(property.id);
             return;
         }
 
@@ -470,9 +477,14 @@ export const PropertyList = () => {
                         {/* Embedded Listing Detail View */}
                         <ListingDetailView
                             listingId={selectedPin?.id ?? null}
+                            propertyId={selectedPropertyId}
+                            userRole={role ?? null}
                             showRent={filters.showRent}
                             showSale={filters.showSale}
-                            onClose={() => setSelectedPin(null)}
+                            onClose={() => {
+                                setSelectedPin(null);
+                                setSelectedPropertyId(null);
+                            }}
                         />
                     </Panel>
                 </PanelGroup>
