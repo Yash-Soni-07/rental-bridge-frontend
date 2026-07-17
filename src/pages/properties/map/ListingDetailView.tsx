@@ -7,6 +7,7 @@ import { formatCr, formatRent, formatPerSqft } from "@/lib/formatPrice";
 import { WorkspaceCommuteCard } from "./WorkspaceCommuteCard";
 import { NearbyAmenitiesCard } from "./NearbyAmenitiesCard";
 import { InquiryCard } from "./InquiryCard";
+import { PropertyImageCarousel } from "./PropertyImageCarousel";
 import { Button } from "@/components/ui/button";
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -117,6 +118,14 @@ export function ListingDetailView({
                             )}
                         </div>
                     </div>
+
+                    {/* ── Photos Carousel ── */}
+                    <PropertyImageCarousel 
+                        propertyId={detail.id} 
+                        propertyName={detail.name}
+                        propertyCity={detail.city}
+                        propertyType={detail.property_type} 
+                    />
 
                     {/* ── Area info ── */}
                     {(detail.area_sqft_raw || detail.area_sqft_super) && (
