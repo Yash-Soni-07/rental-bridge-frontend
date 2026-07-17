@@ -268,7 +268,7 @@ export function WorkspaceCommuteCard({ propertyLat, propertyLng }: WorkspaceComm
                                 if (suggestions.length > 0) setShowSuggestions(true);
                             }}
                             placeholder="Start typing your workspace..."
-                            className="w-full pl-9 pr-8 py-2 text-sm rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary transition-all placeholder:text-muted-foreground/55"
+                            className="w-full pl-9 pr-8 py-2 text-sm rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary transition-all placeholder:text-muted-foreground"
                         />
                         {isSearching && (
                             <Loader2 className="absolute right-3 h-3.5 w-3.5 text-muted-foreground animate-spin" />

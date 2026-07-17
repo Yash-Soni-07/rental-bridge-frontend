@@ -23,6 +23,7 @@ import {
     Wrench,
     PlusCircle,
     LogOut,
+    LogIn,
     Menu,
     ChevronLeft,
     ChevronRight,
@@ -121,13 +122,16 @@ export function SidebarContent({ collapsed = false, onNavigate }: SidebarContent
     const { data: user } = useGetIdentity<User>();
     const { data: role } = usePermissions<string>({});
 
+    const isLoggedIn = !!user;
     const navItems = useFilteredNav(role);
 
-    const initials = user?.full_name
-        ? user.full_name.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)
-        : (user?.email?.[0] ?? "U").toUpperCase();
+    const initials = isLoggedIn
+        ? (user?.full_name
+            ? user.full_name.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)
+            : (user?.email?.[0] ?? "U").toUpperCase())
+        : "G";
 
-    const displayName = user?.full_name || user?.email || "User";
+    const displayName = isLoggedIn ? (user?.full_name || user?.email || "User") : "Guest";
 
     const handleNav = (path: string) => {
         onNavigate?.();
@@ -174,21 +178,33 @@ export function SidebarContent({ collapsed = false, onNavigate }: SidebarContent
                         </Avatar>
                         <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium leading-tight truncate">{displayName}</p>
-                            <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
-                            {role && (
+                            <p className="text-xs text-muted-foreground truncate">
+                                {isLoggedIn ? user?.email : "Please sign in"}
+                            </p>
+                            {isLoggedIn && role && (
                                 <Badge variant="secondary" className="capitalize text-[10px] mt-0.5 h-4 px-1.5">
                                     {role}
                                 </Badge>
                             )}
                         </div>
                     </div>
-                    <button
-                        onClick={() => logout()}
-                        title="Log out"
-                        className="flex items-center justify-center p-2 rounded-lg text-destructive hover:bg-destructive/10 transition-colors cursor-pointer border-none bg-transparent flex-shrink-0"
-                    >
-                        <LogOut className="h-5 w-5" />
-                    </button>
+                    {isLoggedIn ? (
+                        <button
+                            onClick={() => logout()}
+                            title="Log out"
+                            className="flex items-center justify-center p-2 rounded-lg text-destructive hover:bg-destructive/10 transition-colors cursor-pointer border-none bg-transparent flex-shrink-0"
+                        >
+                            <LogOut className="h-5 w-5" />
+                        </button>
+                    ) : (
+                        <button
+                            onClick={() => go({ to: "/login", type: "push" })}
+                            title="Login/Sign"
+                            className="flex items-center justify-center px-2 py-1 rounded bg-primary text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer border-none text-xs font-semibold flex-shrink-0"
+                        >
+                            Login/Sign
+                        </button>
+                    )}
                 </div>
             )}
 
@@ -199,13 +215,23 @@ export function SidebarContent({ collapsed = false, onNavigate }: SidebarContent
                             {initials}
                         </AvatarFallback>
                     </Avatar>
-                    <button
-                        onClick={() => logout()}
-                        title="Log out"
-                        className="flex items-center justify-center p-1.5 rounded-lg text-destructive hover:bg-destructive/10 transition-colors cursor-pointer border-none bg-transparent"
-                    >
-                        <LogOut className="h-4 w-4" />
-                    </button>
+                    {isLoggedIn ? (
+                        <button
+                            onClick={() => logout()}
+                            title="Log out"
+                            className="flex items-center justify-center p-1.5 rounded-lg text-destructive hover:bg-destructive/10 transition-colors cursor-pointer border-none bg-transparent"
+                        >
+                            <LogOut className="h-4 w-4" />
+                        </button>
+                    ) : (
+                        <button
+                            onClick={() => go({ to: "/login", type: "push" })}
+                            title="Login/Sign"
+                            className="flex items-center justify-center p-1.5 rounded-lg text-primary hover:bg-primary/10 transition-colors cursor-pointer border-none bg-transparent"
+                        >
+                            <LogIn className="h-4 w-4" />
+                        </button>
+                    )}
                 </div>
             )}
 

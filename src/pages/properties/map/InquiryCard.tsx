@@ -116,7 +116,7 @@ export function InquiryCard({ property }: InquiryCardProps) {
                             placeholder="Your Name"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
-                            className="w-full pl-9 pr-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-1 focus:ring-primary bg-background"
+                            className="w-full pl-9 pr-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-1 focus:ring-primary bg-background text-foreground placeholder:text-muted-foreground"
                             required
                             disabled={loading}
                         />
@@ -129,7 +129,7 @@ export function InquiryCard({ property }: InquiryCardProps) {
                             placeholder="Phone Number"
                             value={phone}
                             onChange={(e) => setPhone(e.target.value)}
-                            className="w-full pl-9 pr-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-1 focus:ring-primary bg-background"
+                            className="w-full pl-9 pr-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-1 focus:ring-primary bg-background text-foreground placeholder:text-muted-foreground"
                             required
                             disabled={loading}
                         />
@@ -142,7 +142,7 @@ export function InquiryCard({ property }: InquiryCardProps) {
                             placeholder="Email Address"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            className="w-full pl-9 pr-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-1 focus:ring-primary bg-background"
+                            className="w-full pl-9 pr-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-1 focus:ring-primary bg-background text-foreground placeholder:text-muted-foreground"
                             required
                             disabled={loading}
                         />
@@ -154,7 +154,7 @@ export function InquiryCard({ property }: InquiryCardProps) {
                             placeholder="I'm interested in this property..."
                             value={message}
                             onChange={(e) => setMessage(e.target.value)}
-                            className="w-full pl-9 pr-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-1 focus:ring-primary bg-background min-h-[80px] resize-none"
+                            className="w-full pl-9 pr-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-1 focus:ring-primary bg-background text-foreground placeholder:text-muted-foreground min-h-[80px] resize-none"
                             disabled={loading}
                         />
                     </div>
